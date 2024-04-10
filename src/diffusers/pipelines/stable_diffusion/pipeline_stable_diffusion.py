@@ -846,7 +846,7 @@ class StableDiffusionPipeline(
         text_conditioning_time = 0
         forward_diffusion_time = 0
         reverse_diffusion_time = 0
-        print("test git clone")
+        print("test")
 
         callback = kwargs.pop("callback", None)
         callback_steps = kwargs.pop("callback_steps", None)
@@ -988,7 +988,6 @@ class StableDiffusionPipeline(
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
                 #TODO
-                print(f"predict the noise residual at i={i}") 
                 
                 unet_start_time = time.time() 
 
@@ -1004,6 +1003,7 @@ class StableDiffusionPipeline(
                 )[0]
                 unet_end_time = time.time() 
                 unet_time += unet_end_time - unet_start_time 
+                print(f"predict the noise residual spent {unet_time} at i={i} ") 
 
                 # perform guidance
                 if self.do_classifier_free_guidance:
@@ -1077,3 +1077,4 @@ class StableDiffusionPipeline(
         print(f"Total Execution Time: {total_time:.2f} seconds")
 
         return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
+
