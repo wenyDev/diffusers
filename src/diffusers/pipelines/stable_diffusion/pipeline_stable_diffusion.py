@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import time
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -839,6 +839,14 @@ class StableDiffusionPipeline(
                 second element is a list of `bool`s indicating whether the corresponding generated image contains
                 "not-safe-for-work" (nsfw) content.
         """
+        #TODO
+        start_time = time.time()
+        vae_time = 0
+        unet_time = 0
+        text_conditioning_time = 0
+        forward_diffusion_time = 0
+        reverse_diffusion_time = 0
+        print("test 10")
 
         callback = kwargs.pop("callback", None)
         callback_steps = kwargs.pop("callback_steps", None)
@@ -896,6 +904,8 @@ class StableDiffusionPipeline(
             self.cross_attention_kwargs.get("scale", None) if self.cross_attention_kwargs is not None else None
         )
 
+        # TODO
+        text_conditioning_start_time = time.time() 
         prompt_embeds, negative_prompt_embeds = self.encode_prompt(
             prompt,
             device,
@@ -907,6 +917,9 @@ class StableDiffusionPipeline(
             lora_scale=lora_scale,
             clip_skip=self.clip_skip,
         )
+
+        text_conditioning_end_time = time.time() 
+        text_conditioning_time += text_conditioning_end_time - text_conditioning_start_time 
 
         # For classifier free guidance, we need to do two forward passes.
         # Here we concatenate the unconditional and text embeddings into a single batch
@@ -928,6 +941,9 @@ class StableDiffusionPipeline(
 
         # 5. Prepare latent variables
         num_channels_latents = self.unet.config.in_channels
+
+        #TODO
+        forward_diffusion_start_time = time.time() 
         latents = self.prepare_latents(
             batch_size * num_images_per_prompt,
             num_channels_latents,
@@ -938,6 +954,8 @@ class StableDiffusionPipeline(
             generator,
             latents,
         )
+        forward_diffusion_end_time = time.time() 
+        forward_diffusion_time += forward_diffusion_end_time - forward_diffusion_start_time 
 
         # 6. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
@@ -969,6 +987,11 @@ class StableDiffusionPipeline(
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
+                #TODO
+                print(f"predict the noise residual at i={i}") 
+                
+                unet_start_time = time.time() 
+
                 # predict the noise residual
                 noise_pred = self.unet(
                     latent_model_input,
@@ -979,6 +1002,8 @@ class StableDiffusionPipeline(
                     added_cond_kwargs=added_cond_kwargs,
                     return_dict=False,
                 )[0]
+                unet_end_time = time.time() 
+                unet_time += unet_end_time - unet_start_time 
 
                 # perform guidance
                 if self.do_classifier_free_guidance:
@@ -990,7 +1015,11 @@ class StableDiffusionPipeline(
                     noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=self.guidance_rescale)
 
                 # compute the previous noisy sample x_t -> x_t-1
+                #TODO
+                reverse_diffusion_start_time = time.time()
                 latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
+                reverse_diffusion_end_time = time.time() 
+                reverse_diffusion_time += reverse_diffusion_end_time - reverse_diffusion_start_time 
 
                 if callback_on_step_end is not None:
                     callback_kwargs = {}
@@ -1010,9 +1039,13 @@ class StableDiffusionPipeline(
                         callback(step_idx, t, latents)
 
         if not output_type == "latent":
+            #TODO
+            vae_start_time = time.time()
             image = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False, generator=generator)[
                 0
             ]
+            vae_end_time = time.time() 
+            vae_time += vae_end_time - vae_start_time 
             image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
         else:
             image = latents
@@ -1030,5 +1063,17 @@ class StableDiffusionPipeline(
 
         if not return_dict:
             return (image, has_nsfw_concept)
+        
+        #TODO
+        end_time = time.time()
+        total_time = end_time - start_time
+    
+        print(f"Time usage:")
+        print(f"VAE: {vae_time:.2f} seconds")
+        print(f"U-Net: {unet_time:.2f} seconds") 
+        print(f"Text Conditioning: {text_conditioning_time:.2f} seconds")
+        print(f"Forward Diffusion: {forward_diffusion_time:.2f} seconds") 
+        print(f"Reverse Diffusion: {reverse_diffusion_time:.2f} seconds")
+        print(f"Total Execution Time: {total_time:.2f} seconds")
 
         return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
