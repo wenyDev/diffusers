@@ -1002,8 +1002,9 @@ class StableDiffusionPipeline(
                     return_dict=False,
                 )[0]
                 unet_end_time = time.time() 
-                unet_time += unet_end_time - unet_start_time 
-                print(f"predict the noise residual spent {unet_time} at i={i} ") 
+                spent_time = unet_end_time - unet_start_time
+                unet_time += spent_time 
+                print(f"predict the noise residual spent {spent_time} at i={i} ") 
 
                 # perform guidance
                 if self.do_classifier_free_guidance:
