@@ -846,7 +846,7 @@ class StableDiffusionPipeline(
         text_conditioning_time = 0
         forward_diffusion_time = 0
         reverse_diffusion_time = 0
-        print("test 10")
+        print("test git clone")
 
         callback = kwargs.pop("callback", None)
         callback_steps = kwargs.pop("callback_steps", None)
