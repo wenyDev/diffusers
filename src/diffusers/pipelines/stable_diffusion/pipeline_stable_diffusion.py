@@ -982,7 +982,7 @@ class StableDiffusionPipeline(
                     continue
                 
                 reverse_diffusion_start_time = time.time()
-                with open("reverse_diffusion_times", 'a') as file:
+                with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
                     file.write("[" + datetime.now().strftime('%H:%M:%S') )
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
@@ -991,7 +991,7 @@ class StableDiffusionPipeline(
                 #TODO
                 
                 unet_start_time = time.time() 
-                with open("unet_times", 'a') as file:
+                with open("/stablediffusion/unet_times", 'a') as file:
                     file.write("[" + datetime.now().strftime('%H:%M:%S'))
 
                 # predict the noise residual
@@ -1007,7 +1007,7 @@ class StableDiffusionPipeline(
                 unet_end_time = time.time() 
                 spent_time = unet_end_time - unet_start_time
                 unet_time += spent_time 
-                with open("unet_times", 'a') as file:                 
+                with open("/stablediffusion/unet_times", 'a') as file:                 
                     file.write(f", {datetime.now().strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
  
                 
@@ -1025,13 +1025,13 @@ class StableDiffusionPipeline(
                 # compute the previous noisy sample x_t -> x_t-1
                 
                 latent_updating_start_time = time.time()
-                with open("latent_updating_times", 'a') as file:
+                with open("/stablediffusion/latent_updating_times", 'a') as file:
                     file.write("[" + datetime.now().strftime('%H:%M:%S'))
                 latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
                 latent_updating_end_time = time.time() 
                 spent_time = latent_updating_end_time - latent_updating_start_time
                 latent_updating_time += spent_time
-                with open("latent_updating_times", 'a') as file:
+                with open("/stablediffusion/latent_updating_times", 'a') as file:
                     file.write(f", {datetime.now().strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
 
                 if callback_on_step_end is not None:
@@ -1052,7 +1052,7 @@ class StableDiffusionPipeline(
                         callback(step_idx, t, latents)
                 reverse_diffusion_end_time = time.time() 
                 reverse_diffusion_time += reverse_diffusion_end_time - reverse_diffusion_start_time 
-                with open("reverse_diffusion_times", 'a') as file:
+                with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
                     file.write(f", {datetime.now().strftime('%H:%M:%S')}, {(reverse_diffusion_end_time - reverse_diffusion_start_time):.2f}]\n")
 
         
