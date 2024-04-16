@@ -1314,13 +1314,13 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin,
             # remove `lora_scale` from each PEFT layer
             unscale_lora_layers(self, lora_scale)
 
-        with open("upsampling", 'a') as file:
+        with open("/stablediffusion/upsampling", 'a') as file:
             file.write("[" + upsampling_start_time + ", " + upsampling_end_time + "]\n")
     
-        with open("midblock", 'a') as file:
+        with open("/stablediffusion/midblock", 'a') as file:
             file.write("[" + mid_block_start_time + ", " + mid_block_end_time + "]\n")
     
-        with open("downsampling", 'a') as file:
+        with open("/stablediffusion/downsampling", 'a') as file:
             file.write("[" + downsampling_start_time + ", " + downsampling_end_time + "]\n")
                 
         if not return_dict:
