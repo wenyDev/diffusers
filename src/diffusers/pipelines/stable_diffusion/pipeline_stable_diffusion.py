@@ -16,6 +16,7 @@ from datetime import datetime
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 
+import pytz
 import torch
 from packaging import version
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
@@ -983,7 +984,7 @@ class StableDiffusionPipeline(
                 
                 reverse_diffusion_start_time = time.time()
                 with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
-                    file.write("[" + datetime.now().strftime('%H:%M:%S') )
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S') )
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
@@ -992,7 +993,7 @@ class StableDiffusionPipeline(
                 
                 unet_start_time = time.time() 
                 with open("/stablediffusion/unet_times", 'a') as file:
-                    file.write("[" + datetime.now().strftime('%H:%M:%S'))
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S'))
 
                 # predict the noise residual
                 noise_pred= self.unet(
@@ -1008,7 +1009,7 @@ class StableDiffusionPipeline(
                 spent_time = unet_end_time - unet_start_time
                 unet_time += spent_time 
                 with open("/stablediffusion/unet_times", 'a') as file:                 
-                    file.write(f", {datetime.now().strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
  
                 
                 
@@ -1026,13 +1027,13 @@ class StableDiffusionPipeline(
                 
                 latent_updating_start_time = time.time()
                 with open("/stablediffusion/latent_updating_times", 'a') as file:
-                    file.write("[" + datetime.now().strftime('%H:%M:%S'))
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S'))
                 latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
                 latent_updating_end_time = time.time() 
                 spent_time = latent_updating_end_time - latent_updating_start_time
                 latent_updating_time += spent_time
                 with open("/stablediffusion/latent_updating_times", 'a') as file:
-                    file.write(f", {datetime.now().strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
 
                 if callback_on_step_end is not None:
                     callback_kwargs = {}
@@ -1053,7 +1054,7 @@ class StableDiffusionPipeline(
                 reverse_diffusion_end_time = time.time() 
                 reverse_diffusion_time += reverse_diffusion_end_time - reverse_diffusion_start_time 
                 with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
-                    file.write(f", {datetime.now().strftime('%H:%M:%S')}, {(reverse_diffusion_end_time - reverse_diffusion_start_time):.2f}]\n")
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {(reverse_diffusion_end_time - reverse_diffusion_start_time):.2f}]\n")
 
         
 
