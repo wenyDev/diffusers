@@ -18,6 +18,7 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.utils.checkpoint
+import pytz
 
 from ...configuration_utils import ConfigMixin, register_to_config
 from ...loaders import PeftAdapterMixin, UNet2DConditionLoadersMixin
@@ -1178,7 +1179,8 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin,
         # 3. down
         # we're popping the `scale` instead of getting it because otherwise `scale` will be propagated
         # to the internal blocks and will raise deprecation warnings. this will be confusing for our users.
-        downsampling_start_time = datetime.now().strftime('%H:%M:%S')
+        downsampling_start_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
+        
         if cross_attention_kwargs is not None:
             cross_attention_kwargs = cross_attention_kwargs.copy()
             lora_scale = cross_attention_kwargs.pop("scale", 1.0)
@@ -1241,12 +1243,12 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin,
                 new_down_block_res_samples = new_down_block_res_samples + (down_block_res_sample,)
 
             down_block_res_samples = new_down_block_res_samples
-        downsampling_end_time = datetime.now().strftime('%H:%M:%S')
+        downsampling_end_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
         
         
         
         # 4. mid
-        mid_block_start_time = datetime.now().strftime('%H:%M:%S')
+        mid_block_start_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
         if self.mid_block is not None:
             if hasattr(self.mid_block, "has_cross_attention") and self.mid_block.has_cross_attention:
                 sample = self.mid_block(
@@ -1270,10 +1272,10 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin,
 
         if is_controlnet:
             sample = sample + mid_block_additional_residual
-        mid_block_end_time = datetime.now().strftime('%H:%M:%S')
+        mid_block_end_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
         
         # 5. up
-        upsampling_start_time = datetime.now().strftime('%H:%M:%S')
+        upsampling_start_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
         for i, upsample_block in enumerate(self.up_blocks):
             is_final_block = i == len(self.up_blocks) - 1
 
@@ -1303,7 +1305,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin,
                     res_hidden_states_tuple=res_samples,
                     upsample_size=upsample_size,
                 )
-        upsampling_end_time = datetime.now().strftime('%H:%M:%S')
+        upsampling_end_time = datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')
         # 6. post-process
         if self.conv_norm_out:
             sample = self.conv_norm_out(sample)
