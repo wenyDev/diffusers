@@ -1090,17 +1090,23 @@ class StableDiffusionPipeline(
         total_time = end_time - start_time
         
         with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
         with open("/stablediffusion/downsampling", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
         with open("/stablediffusion/latent_updating_times", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
         with open("/stablediffusion/upsampling", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
         with open("/stablediffusion/midblock", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
         with open("/stablediffusion/unet_times", 'a') as file:
-                    file.write("--------------------\n\n" )
+                    file.write("--------------------" )
+                    file.write("\n" )
 
         print(f"Time usage:")
         print(f"prompt_encoding: {prompt_encoding_time:.2f} seconds") 
