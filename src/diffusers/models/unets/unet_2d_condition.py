@@ -53,7 +53,7 @@ from .unet_2d_blocks import (
 
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
+chicago_tz = pytz.timezone('America/Chicago')
 
 @dataclass
 class UNet2DConditionOutput(BaseOutput):
