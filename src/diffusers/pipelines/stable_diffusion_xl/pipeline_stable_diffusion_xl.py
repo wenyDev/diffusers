@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import time
+from datetime import datetime
 import inspect
+import pytz
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+chicago_tz = pytz.timezone('America/Chicago')
 
 import torch
 from transformers import (
@@ -1000,7 +1003,14 @@ class StableDiffusionXLPipeline(
                 "1.0.0",
                 "Passing `callback_steps` as an input argument to `__call__` is deprecated, consider use `callback_on_step_end`",
             )
-
+        start_time = time.time()
+        prompt_encoding_time = 0   
+        reverse_diffusion_time = 0    
+        unet_time = 0  
+        latent_updating_time = 0  
+        image_decoding_time = 0
+        print("test")
+        
         # 0. Default height and width to unet
         height = height or self.default_sample_size * self.vae_scale_factor
         width = width or self.default_sample_size * self.vae_scale_factor
@@ -1048,6 +1058,7 @@ class StableDiffusionXLPipeline(
             self.cross_attention_kwargs.get("scale", None) if self.cross_attention_kwargs is not None else None
         )
 
+        prompt_encoding_start_time = time.time() 
         (
             prompt_embeds,
             negative_prompt_embeds,
@@ -1068,6 +1079,8 @@ class StableDiffusionXLPipeline(
             lora_scale=lora_scale,
             clip_skip=self.clip_skip,
         )
+        prompt_encoding_end_time = time.time() 
+        prompt_encoding_time += prompt_encoding_end_time - prompt_encoding_start_time 
 
         # 4. Prepare timesteps
         timesteps, num_inference_steps = retrieve_timesteps(self.scheduler, num_inference_steps, device, timesteps)
@@ -1163,7 +1176,10 @@ class StableDiffusionXLPipeline(
             for i, t in enumerate(timesteps):
                 if self.interrupt:
                     continue
-
+                
+                reverse_diffusion_start_time = time.time()
+                with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S') )
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
 
@@ -1173,6 +1189,10 @@ class StableDiffusionXLPipeline(
                 added_cond_kwargs = {"text_embeds": add_text_embeds, "time_ids": add_time_ids}
                 if ip_adapter_image is not None or ip_adapter_image_embeds is not None:
                     added_cond_kwargs["image_embeds"] = image_embeds
+                
+                unet_start_time = time.time() 
+                with open("/stablediffusion/unet_times", 'a') as file:
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S'))
                 noise_pred = self.unet(
                     latent_model_input,
                     t,
@@ -1182,6 +1202,11 @@ class StableDiffusionXLPipeline(
                     added_cond_kwargs=added_cond_kwargs,
                     return_dict=False,
                 )[0]
+                unet_end_time = time.time() 
+                spent_time = unet_end_time - unet_start_time
+                unet_time += spent_time 
+                with open("/stablediffusion/unet_times", 'a') as file:                 
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
 
                 # perform guidance
                 if self.do_classifier_free_guidance:
@@ -1193,13 +1218,18 @@ class StableDiffusionXLPipeline(
                     noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=self.guidance_rescale)
 
                 # compute the previous noisy sample x_t -> x_t-1
+                latent_updating_start_time = time.time()
+                with open("/stablediffusion/latent_updating_times", 'a') as file:
+                    file.write("[" + datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S'))
                 latents_dtype = latents.dtype
                 latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
                 if latents.dtype != latents_dtype:
                     if torch.backends.mps.is_available():
                         # some platforms (eg. apple mps) misbehave due to a pytorch bug: https://github.com/pytorch/pytorch/pull/99272
                         latents = latents.to(latents_dtype)
-
+                with open("/stablediffusion/latent_updating_times", 'a') as file:
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {spent_time:.2f}]\n")
+                    
                 if callback_on_step_end is not None:
                     callback_kwargs = {}
                     for k in callback_on_step_end_tensor_inputs:
@@ -1225,6 +1255,10 @@ class StableDiffusionXLPipeline(
 
                 if XLA_AVAILABLE:
                     xm.mark_step()
+                reverse_diffusion_end_time = time.time() 
+                reverse_diffusion_time += reverse_diffusion_end_time - reverse_diffusion_start_time
+                with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
+                    file.write(f", {datetime.now(pytz.utc).astimezone(chicago_tz).strftime('%H:%M:%S')}, {(reverse_diffusion_end_time - reverse_diffusion_start_time):.2f}]\n")
 
         if not output_type == "latent":
             # make sure the VAE is in float32 mode, as it overflows in float16
@@ -1271,6 +1305,36 @@ class StableDiffusionXLPipeline(
         # Offload all models
         self.maybe_free_model_hooks()
 
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        with open("/stablediffusion/reverse_diffusion_times", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+        with open("/stablediffusion/downsampling", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+        with open("/stablediffusion/latent_updating_times", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+        with open("/stablediffusion/upsampling", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+        with open("/stablediffusion/midblock", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+        with open("/stablediffusion/unet_times", 'a') as file:
+                    file.write("--------------------" )
+                    file.write("\n" )
+
+        print(f"Time usage:")
+        print(f"prompt_encoding: {prompt_encoding_time:.2f} seconds") 
+        print(f"U-Net: {unet_time:.2f} seconds") 
+        print(f"latent_updating: {latent_updating_time:.2f} seconds")
+        print(f"Reverse Diffusion: {reverse_diffusion_time:.2f} seconds")
+        print(f"image_decoding: {image_decoding_time:.2f} seconds")
+        print(f"Total Execution Time: {total_time:.2f} seconds")
+        
         if not return_dict:
             return (image,)
 
